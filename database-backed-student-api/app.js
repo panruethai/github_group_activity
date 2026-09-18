@@ -9,27 +9,45 @@ connectDB();
 
 app.use(express.json());
 
+// Home route
 app.get("/", (req, res) => {
   res.send(`
-    <h1>Database-backed Student API</h1>
-    <p>This API uses MongoDB instead of students.json.</p>
+    <h1>Complete Student REST API</h1>
+    <p>This API supports GET, POST, PATCH, and DELETE.</p>
     <ul>
       <li>GET /api/students</li>
-      <li>POST /api/students</li>
       <li>GET /api/students/:id</li>
+      <li>POST /api/students</li>
+      <li>PATCH /api/students/:id</li>
+      <li>DELETE /api/students/:id</li>
     </ul>
   `);
 });
 
+// GET all students (200 OK)
 app.get("/api/students", async (req, res) => {
   try {
     const students = await Student.find();
     res.json(students);
-  } catch {
+  } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
 });
 
+// GET one student by ID (200 OK / 404 / 400)
+app.get("/api/students/:id", async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+    res.json(student);
+  } catch (error) {
+    res.status(400).json({ error: "Invalid student ID" });
+  }
+});
+
+// POST create student (201 Created / 400)
 app.post("/api/students", async (req, res) => {
   try {
     const created = await Student.create(req.body);
@@ -39,20 +57,37 @@ app.post("/api/students", async (req, res) => {
   }
 });
 
-app.get("/api/students/:id", async (req, res) => {
+// PATCH update student (200 OK / 404 / 400)
+app.patch("/api/students/:id", async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
-
-    if (!student) {
+    const updated = await Student.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updated) {
       return res.status(404).json({ error: "Student not found" });
     }
-
-    res.json(student);
-  } catch {
-    res.status(404).json({ error: "Invalid student ID" });
+    res.json(updated);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
+// DELETE student (204 No Content / 404 / 400)
+app.delete("/api/students/:id", async (req, res) => {
+  try {
+    const deleted = await Student.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+    res.status(204).send();
+  } catch (error) {
+    res.status(400).json({ error: "Invalid student ID" });
+  }
+});
+
+// 404 Handler for unknown routes
 app.use((req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
